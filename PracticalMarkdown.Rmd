@@ -3,13 +3,13 @@ title: "Practical Markdown Use"
 author: "Chris Mellinger"
 date: "1/25/2018"
 output:
-  html_document:
-    toc: yes
   pdf_document:
+    toc: yes
+  html_document:
     toc: yes
 ---
 
-**See this document here:** <https://github.com/Cmell/BBMarkdownTalkSpring2018>
+*Download this document here:* <https://github.com/Cmell/BBMarkdownTalkSpring2018>
 
 # R Markdown as a Text Editor and Processor
 
@@ -48,12 +48,13 @@ Because inline code can also be evaluated, it is possible to write dynamic docum
 
 Let's get the packages we will need for this analysis.
 
-```{r}
+```{r, message=FALSE}
 library(CMUtils)
 library(ResultsHelper)
 library(Hmisc)
 library(knitr)
 library(papaja)
+library(stargazer)
 ```
 
 ### Descriptives
@@ -100,8 +101,18 @@ with(mtcars, {
 
 What about a different version, controlling for the car's weight?
 
-```{r}
-lmSummary(mod1 <- lm(mpg ~ disp + wt, data=mtcars))
+*Nota bene:* The next chunk puts out \LaTeX. It will not work with HTML. To make it work with HTML files, implement the `stargazer` option `type="html"`. The next chunk does just that.
+
+```{r, results='asis'}
+stargazer(mod1 <- lm(mpg ~ disp + wt, data=mtcars), header = F)
+```
+
+\newpage
+
+Of course, this chunk will not work in pdf files.
+
+```{r, results='asis'}
+stargazer(mod1 <- lm(mpg ~ disp + wt, data=mtcars), type="html", header = F)
 ```
 
 Still marginal, but not as robust as before. It turns out that the car's weight matters too.
@@ -230,10 +241,11 @@ weight was controlled for. Displacement marginally predicted efficiency,
     - [Graphing; mostly `ggplot` if you're into that sort of thing](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf)
 - `Knitr` and chunk options:
     - <https://yihui.name/knitr/options/>
+    - [More detail on how to control output from chunks](https://yihui.name/knitr/demo/output/)
 - Math and other stuff in \LaTeX:
     - <https://en.wikibooks.org/wiki/LaTeX/Mathematics>
     - <https://artofproblemsolving.com/wiki/index.php/LaTeX:Symbols>
 - Some packages you may want to consider:
     - `tidyverse`: A collection of tools to make data operations in R easier and more beautiful to program.
-    - `stargazer`: Tools for representing data and results in clean tables.
+    - `stargazer`: Tools for representing data and results in clean tables. [Here is an awesome](https://www.jakeruss.com/cheatsheets/stargazer/) introduction and cheat sheet for it.
     - `papaja`: Tools for APA style markdown (showcased above).
