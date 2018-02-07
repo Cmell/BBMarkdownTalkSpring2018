@@ -9,6 +9,8 @@ output:
     toc: yes
 ---
 
+**See this document here:** <https://github.com/Cmell/BBMarkdownTalkSpring2018>
+
 # R Markdown as a Text Editor and Processor
 
 R Markdown is an excellent text processing tool. It can *handle* **many** formatting options. It does inline equations, $\pi = 3.14$, with support for many special characters. It will do equations set off from the text too:
