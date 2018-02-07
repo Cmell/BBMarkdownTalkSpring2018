@@ -1,0 +1,81 @@
+---
+title: "Practical R Markdown - Live Demo"
+author: "Chris Mellinger"
+date: "2/7/2018"
+output: 
+  pdf_document:
+    toc: yes
+---
+
+# R Markdown as a Text Editor and Processor
+
+R Markdown is an excellent text processing tool. It does inline equations, $\pi = 3.14$. It will do equations set off from the text too:
+
+$$e = (1 + \frac{1}{n})^n$$
+
+This example page has explanations: <http://kbroman.org/knitr_knutshell/pages/Rmarkdown.html>. Other stuff it can do:
+
+- Bulleted lists, like this one.
+- **Bold text.**
+- *Italicized text.*
+- ~~strikethrough text~~
+- Mult-tiered lists
+    - list tier 2
+        1) Numbered lists
+        2) Continued
+        1) That will autonumber no matter what you put on the left.
+        
+# Example Analysis
+
+Let's get the packages we will need for this analysis.
+
+```{r import packages, message=FALSE}
+library(CMUtils)
+library(ResultsHelper)
+library(knitr)
+library(papaja)
+```
+
+## Descriptives
+
+```{r}
+summary(mtcars)
+```
+
+```{r}
+hist(mtcars$mpg)
+```
+
+```{r}
+mtcars$trans <- ifelse(mtcars$am, 'auto', 'manual')
+
+kable(table(mtcars$trans), col.names = c('Transmission Type', 'Count'))
+```
+
+## Engine Size and Efficiency
+
+**Question:** What is the relationship between a car's engine size and its efficiency?
+
+First pass with a simple regression:
+
+```{r}
+smSum <- lmSummary(simpleMod <- lm(mpg ~ disp, data=mtcars))
+```
+
+# Example Results Section
+
+In the first step of the analysis, efficiency (in MPG) was regressed on engine displacement. Engine size sigificantly predicted efficiency, $b=`r round(coef(simpleMod)['disp'], 2)`$, $t(`r simpleMod$df.residual`) = `r round(smSum$coefficients['disp', 't value'], 2)`$.
+
+*Same thing but better code.*
+
+In the first step of the analysis, efficiency (in MPG) was regressed on engine displacement. Engine size sigificantly predicted efficiency, `r fpStr('disp', simpleMod)`.
+
+*One more time!*
+
+In the first step of the analysis, efficiency (in MPG) was regressed on engine displacement. Engine size sigificantly predicted efficiency, `r apa_print(simpleMod)$full_result$disp`.
+
+# Code Chunk Options
+
+```{r, eval=F}
+`r fpStr('disp', simpleMod)`
+```
