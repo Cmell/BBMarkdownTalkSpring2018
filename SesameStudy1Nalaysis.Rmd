@@ -1,0 +1,12 @@
+---
+title: 'Sesame Project: Study 1 Analysis'
+author: "Chris Mellinger"
+date: "2/6/2018"
+output: html_document
+---
+
+# Introduction / Readme
+
+This project is intended to demonstrate an analysis document. This section is primarily to model the idea that an introductory paragraph or two might be tremendously useful to yourself or someone who needs to review your data and analysis for whatever reason.
+
+The data set analyzed below was generated as a toy data set. In it, a hypothetical sample was surveyed about the 

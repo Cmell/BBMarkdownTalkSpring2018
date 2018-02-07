@@ -1,0 +1,237 @@
+---
+title: "Practical Markdown Use"
+author: "Chris Mellinger"
+date: "1/25/2018"
+output:
+  html_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+# R Markdown as a Text Editor and Processor
+
+R Markdown is an excellent text processing tool. It can *handle* **many** formatting options. It does inline equations, $\pi = 3.14$, with support for many special characters. It will do equations set off from the text too:
+
+$$e = (1 + \frac{1}{n})^n$$
+
+You can include links to great resources, like [the official R Markdown cheat sheet](http://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf), or this fantastic example page with explanations: <http://kbroman.org/knitr_knutshell/pages/Rmarkdown.html>. Other stuff it can do:
+
+- Bulleted lists, like this one.
+- Footnotes[^1]
+- Images with captions (see the resources above for examples).
+- Code expressed inline, `mean(x)`, and this can be evaluated inline as well (more on this soon).
+- ~~strikethrough text~~
+- Mult-tiered lists
+    - list tier 2
+        1) Numbered lists
+        2) Continued
+        1) That will autonumber no matter what you put on the left.
+- Tables (there are multiple ways to do this, more on this soon):
+
+| Left Justified | Right Justified | Centered | 
+|:---------------|----------------:|:--------:|
+| 23             |  45             | 56       |
+| 56             | 87              | 42       |
+
+[^1]: Here is the footnote.
+
+# Combining Analysis and Presentation
+
+R Markdown can run code for you and assimilate the output. This is a great way to organize scripts (which are notoriously annoying to organize), document your code well, and generate a very readable analysis document for sharing with others.
+
+Because inline code can also be evaluated, it is possible to write dynamic documents. An example of a results section that would update dynamically with changes to the analysis is given below.
+
+## Example Analysis
+
+Let's get the packages we will need for this analysis.
+
+```{r}
+library(CMUtils)
+library(ResultsHelper)
+library(Hmisc)
+library(knitr)
+library(papaja)
+```
+
+### Descriptives
+
+```{r}
+summary(mtcars)
+```
+
+```{r}
+hist(mtcars$mpg)
+```
+
+```{r}
+hist(mtcars$disp)
+```
+
+```{r}
+mtcars$trans <- ifelse(mtcars$am, 'auto', 'manual')
+
+kable(table(mtcars$trans), col.names = c('Transmission Type', 'Count'))
+```
+
+
+
+
+### Engine Size and Efficiency
+
+**Question:** What is the relationship between a car's engine size and its efficiency?
+
+First pass with a simple regression:
+
+```{r}
+smSum <- lmSummary(simpleMod <- lm(mpg ~ disp, data=mtcars))
+```
+
+Looks significant. Let's plot it.
+
+```{r}
+with(mtcars, {
+  plot(disp, mpg, main="Simple Correlation between Efficiency and Engine Size")
+  abline(coef(simpleMod)['(Intercept)'], coef(simpleMod)['disp'])
+})
+```
+
+What about a different version, controlling for the car's weight?
+
+```{r}
+lmSummary(mod1 <- lm(mpg ~ disp + wt, data=mtcars))
+```
+
+Still marginal, but not as robust as before. It turns out that the car's weight matters too.
+
+### Transmission and Efficiency
+
+**Question:** Do cars with manual transmissions have better efficiency than cars with automatic transmissions? Does this effect interact with engine size?
+
+The `am` variable in mtcars is dummy coded 0 for automatic transmissions and 1 for manual transmissions. Let's get some other codes.
+
+```{r}
+mtcars <- within(mtcars, {
+  amC <- .5 * (am == 1) - .5 * (am == 0)
+  amA <- am
+  amM <- abs(am - 1)
+  
+  # Interactions with displacement
+  dispC <- disp - mean(disp)
+  amCxDispC <- amC * dispC
+  
+  # Simples:
+  amAxDispC <- amA * dispC
+  amMxDispC <- amM * dispC
+})
+```
+
+The t-test:
+
+```{r}
+lmSummary(modAm <- lm(mpg ~ amC, data=mtcars))
+```
+
+The primary interaction model:
+
+```{r}
+lmSummary(modAmxDisp <- lm(mpg ~ amC + dispC + amCxDispC, data=mtcars))
+```
+
+In this model, the main effect of displacement indicates that cars with larger engines have lower gas mileage. The interaction suggests that this effect is more negative for manual cars. Let's explore the simples.
+
+```{r}
+lmSummary(modAmMxDisp <- lm(mpg ~ amM + dispC + amMxDispC, data=mtcars))
+lmSummary(modAmAxDisp <- lm(mpg ~ amA + dispC + amAxDispC, data=mtcars))
+```
+
+Let's plot the difference for manual and automatic cars.
+
+```{r}
+with(mtcars, {
+  # Set up the plot, but specify type is none so that I can add points manually
+  plot(disp, mpg, type='n', main="MPG by Displacement")
+  
+  # Add points
+  points(disp[am==0], mpg[am==0], pch=2, col='orange')
+  points(disp[am==1], mpg[am==1], pch=3, col='blue')
+  
+  # Add lines
+  abline(lm(mpg[!amA] ~ disp[!amA]), col='orange') # Automatic
+  abline(lm(mpg[!amM] ~ disp[!amM]), col='blue') # Manual
+  
+  # Add a legend
+  legend(
+    'topright',
+    c('Automatic Cars', 'Manual Cars'),
+    col = c('orange', 'blue'),
+    lty=1
+  )
+})
+```
+
+## Example Results Section
+
+In the first step of the analysis, efficiency (in MPG) was regressed on engine displacement. Engine size sigificantly predicted efficiency, $b=`r round(coef(simpleMod)['disp'], 2)`$, $t(`r simpleMod$df.residual`) = `r round(smSum$coefficients['disp', 't value'], 2)`$.
+
+In a second analysis, engine efficiency was regressed on displacement, but car weight was controlled for. Displacement marginally predicted efficiency, `r fpStr('disp', mod1)`, as well as car weight, `r apa_print(simpleMod)$full_result$disp`.
+
+## Notes on the Results Section
+
+Three statistical results are presented in the previous section. The first uses base R commands, and I do not recommend doing things this way. To see why, here is the code for that result:
+
+```{r, eval=F}
+In the first step of the analysis, efficiency (in MPG) was regressed on engine 
+displacement. Engine size sigificantly predicted efficiency, 
+$b=`r round(coef(simpleMod)['disp'], 2)`$, 
+$t(`r simpleMod$df.residual`) = `r round(smSum$coefficients['disp', 't value'], 2)`$.
+```
+
+
+It is tremendously flexible, but convoluted to read and difficult to write. In addition, many of the operations, such as rounding, are repeated for every single value.
+
+A much cleaner, easier, and quicker way to acheive a dynamic document is to use functions from packages that do the dirty work. One option is `ResultsHelper` (still under heavy development). Here is the code for the second result:
+
+```{r, eval=F}
+`r fpStr('disp', mod1)`
+```
+
+While this is extremely simple to write in code, it does not include all of the desired stats (such as confidence intervals). I hope that soon this will be a flexible package that has the power needed for custom, yet easy to create, dynamic documents.
+
+The third result was created with `papaja`, which is a good package to explore for writing APA style documents. Here is the code:
+
+```{r, eval=F}
+`r apa_print(simpleMod)$full_result$disp`
+```
+
+It includes the things we would need for a results section meeting a large range of journal requirements. It also has the advantage of taking a wide range of statistical test objects from R, such as the result from the `anova()` function. 
+
+Combining this with the text from the Rmd document, we get:
+
+```{r, eval=F}
+In a second analysis, engine efficiency was regressed on displacement, but car 
+weight was controlled for. Displacement marginally predicted efficiency, 
+`r fpStr('disp', mod1)`, as well as car weight, `r apa_print(simpleMod)$full_result$disp`.
+```
+
+# Resources
+
+- R Markdown formatting and code use:
+    - [R Markdown reference](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf)
+    - [R Markdown Cheat Sheet](http://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf)
+    - [A more thorough introduction to R Markdown](http://rmarkdown.rstudio.com/articles_intro.html)
+    - [An even more thorough introduction](http://www.stat.cmu.edu/~cshalizi/rmarkdown/#mark-up-markdown)
+- RStudio's Cheat Sheets:
+    - [All the cheat sheets](https://www.rstudio.com/resources/cheatsheets/)
+    - [Cheat sheet to the RStudio interface](https://www.rstudio.com/wp-content/uploads/2016/01/rstudio-IDE-cheatsheet.pdf)
+    - [The \LaTeX cheat sheet](https://wch.github.io/latexsheet/latexsheet-0.png)
+    - [Graphing; mostly `ggplot` if you're into that sort of thing](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf)
+- `Knitr` and chunk options:
+    - <https://yihui.name/knitr/options/>
+- Math and other stuff in \LaTeX:
+    - <https://en.wikibooks.org/wiki/LaTeX/Mathematics>
+    - <https://artofproblemsolving.com/wiki/index.php/LaTeX:Symbols>
+- Some packages you may want to consider:
+    - `tidyverse`: A collection of tools to make data operations in R easier and more beautiful to program.
+    - `stargazer`: Tools for representing data and results in clean tables.
+    - `papaja`: Tools for APA style markdown (showcased above).
